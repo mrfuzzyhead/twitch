@@ -63,8 +63,10 @@ struct TwitchApp: App {
             }
             .keyboardShortcut("q")
         } label: {
-            Image(systemName: controller.isActive ? "bolt.circle.fill" : "bolt.circle")
-                .accessibilityLabel(controller.sessionSummary)
+            MenuBarLabel(
+                isActive: controller.isActive,
+                accessibilityText: controller.sessionSummary
+            )
         }
         .menuBarExtraStyle(.menu)
     }
