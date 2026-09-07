@@ -19,7 +19,7 @@ Twitch is a lightweight macOS menu bar app that keeps the display and computer a
 
 ## Build and run
 
-Clone the repository, then package the release build as a macOS app:
+Clone the repository, install an Apple Development or Developer ID Application certificate in your keychain, then package the release build as a macOS app:
 
 ```sh
 git clone https://github.com/mrfuzzyhead/twitch.git
@@ -28,11 +28,13 @@ cd twitch
 open dist/Twitch.app
 ```
 
-The script builds the Swift package, generates the app icon variants, creates `dist/Twitch.app`, and ad-hoc signs the result. To use a Developer ID certificate instead, provide its signing identity:
+The script builds the Swift package, generates the app icon variants, creates `dist/Twitch.app`, and signs it with `Developer ID Application: Bradley Searle (VD7DMST4GD)`. It rejects unsigned, ad-hoc, and differently teamed builds because macOS cannot preserve Accessibility permission across versions without a stable code identity. To find available identities, run:
 
 ```sh
-TWITCH_SIGNING_IDENTITY="Developer ID Application: Example" ./scripts/build-app.sh
+security find-identity -v -p codesigning
 ```
+
+Set `TWITCH_SIGNING_IDENTITY` only when selecting another valid identity from team `VD7DMST4GD`.
 
 Move `Twitch.app` to `/Applications` before enabling **Start at login** so macOS can rely on a stable app location.
 
@@ -71,10 +73,11 @@ Common commands:
 
 | Command | Purpose |
 | --- | --- |
-| `swift run Twitch` | Build and run the menu bar app from source |
 | `swift test` | Run the scheduling unit tests |
-| `swift build -c release` | Compile an optimized executable |
-| `./scripts/build-app.sh` | Create and sign `dist/Twitch.app` |
+| `swift build -c release` | Compile without creating a runnable app bundle |
+| `./scripts/build-app.sh` | Create and sign `dist/Twitch.app` with team `VD7DMST4GD` |
+
+Always run Twitch from the signed app bundle. Running the SwiftPM executable directly does not provide the stable code identity needed for persistent macOS privacy permissions.
 
 The app uses `ProcessInfo.beginActivity` to prevent idle sleep, Core Graphics to detect inactivity and post pointer movement, and `SMAppService` for login-item registration.
 
@@ -82,4 +85,5 @@ The app uses `ProcessInfo.beginActivity` to prevent idle sleep, Core Graphics to
 
 - **The pointer does not move:** confirm that **Twitch** is enabled in the menu and that the app has Accessibility permission.
 - **Start at login fails:** move the packaged app to `/Applications`, reopen it from there, and try again.
-- **macOS warns about the app:** local builds are ad-hoc signed unless a Developer ID identity is supplied. In System Settings, review the warning under **Privacy & Security** or rebuild with your own signing certificate.
+- **The build reports no signing identity:** install the Developer ID Application certificate for team `VD7DMST4GD` and its private key in the login keychain.
+- **Accessibility permission is requested after an update:** confirm the replacement app was signed with the same identity and still uses the `net.fuzzyhead.twitch` bundle identifier, then remove and re-add Twitch under **Privacy & Security → Accessibility** if an older ad-hoc build was previously authorized.

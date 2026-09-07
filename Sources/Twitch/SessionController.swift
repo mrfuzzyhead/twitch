@@ -21,6 +21,7 @@ final class SessionController: ObservableObject {
             if twitchEnabled {
                 requestAccessibilityPermissionIfNeeded()
             } else {
+                hasRequestedAccessibilityPermission = false
                 stopTwitching()
             }
         }
@@ -34,6 +35,7 @@ final class SessionController: ObservableObject {
     private var heartbeat: Timer?
     private var twitchTask: Task<Void, Never>?
     private var twitchStartPoint: CGPoint?
+    private var hasRequestedAccessibilityPermission = false
 
     init() {
         twitchEnabled = UserDefaults.standard.bool(forKey: Self.twitchDefaultsKey)
@@ -134,10 +136,17 @@ final class SessionController: ObservableObject {
 
     private func requestAccessibilityPermissionIfNeeded() {
         guard !AXIsProcessTrusted() else {
+            hasRequestedAccessibilityPermission = false
             statusMessage = nil
             return
         }
 
+        guard !hasRequestedAccessibilityPermission else {
+            statusMessage = "Allow Twitch in Privacy & Security → Accessibility to move the pointer."
+            return
+        }
+
+        hasRequestedAccessibilityPermission = true
         AXIsProcessTrustedWithOptions([
             "AXTrustedCheckOptionPrompt": true
         ] as CFDictionary)

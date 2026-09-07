@@ -23,7 +23,7 @@ struct TwitchApp: App {
                 }
 
                 Menu("Until") {
-                    ForEach(0..<24, id: \.self) { hour in
+                    ForEach(SessionSchedule.upcomingHours(after: controller.now), id: \.self) { hour in
                         Button(SessionSchedule.hourLabel(for: hour)) {
                             controller.start(untilHour: hour)
                         }

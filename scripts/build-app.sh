@@ -7,7 +7,23 @@ app_dir="$project_dir/dist/Twitch.app"
 contents_dir="$app_dir/Contents"
 iconset_dir="$project_dir/.build/AppIcon.iconset"
 icon_master="$project_dir/Resources/AppIcon-master.png"
-signing_identity="${TWITCH_SIGNING_IDENTITY:--}"
+expected_team_id="VD7DMST4GD"
+default_signing_identity="Developer ID Application: Bradley Searle ($expected_team_id)"
+signing_identity="${TWITCH_SIGNING_IDENTITY:-$default_signing_identity}"
+
+if [[ "$signing_identity" == "-" ]]; then
+    echo "error: TWITCH_SIGNING_IDENTITY must name a stable Apple Development or Developer ID Application identity." >&2
+    echo "Ad-hoc signing is not allowed because it invalidates macOS privacy permissions after each rebuild." >&2
+    exit 1
+fi
+
+available_identities="$(security find-identity -v -p codesigning)"
+if [[ "$available_identities" != *"$signing_identity"* ]]; then
+    echo "error: no valid code-signing identity matches TWITCH_SIGNING_IDENTITY=$signing_identity" >&2
+    echo "Available identities:" >&2
+    echo "$available_identities" >&2
+    exit 1
+fi
 
 cd "$project_dir"
 swift build -c release --product Twitch
@@ -30,5 +46,12 @@ cp "$project_dir/.build/release/Twitch" "$contents_dir/MacOS/Twitch"
 cp "$project_dir/Support/Info.plist" "$contents_dir/Info.plist"
 
 codesign --force --deep --options runtime --sign "$signing_identity" "$app_dir"
+codesign --verify --deep --strict --verbose=2 "$app_dir"
+
+signature_details="$(codesign -dvvv "$app_dir" 2>&1)"
+if [[ "$signature_details" == *"Signature=adhoc"* || "$signature_details" != *"TeamIdentifier=$expected_team_id"* ]]; then
+    echo "error: packaged app is not signed by expected team $expected_team_id" >&2
+    exit 1
+fi
 
 echo "$app_dir"
